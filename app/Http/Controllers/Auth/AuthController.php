@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
@@ -17,8 +19,30 @@ class AuthController extends Controller
         $user = User::create($data);
 
         return response()->json([
-            'message' => 'user created successfully.',
+            'message' => 'User created successfully.',
             'user' => new UserResource($user)
         ], 201);
+    }
+
+    public function login(LoginRequest $request)
+    {
+        $data = $request->validated();
+
+        $authenticated = Auth::attempt($data);
+
+        if (!$authenticated) {
+            return response()->json([
+                'message' => 'Invalid credentials.'
+            ], 401);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        $token = $user->createToken('auth-token');
+
+        return response()->json([
+            'message' => 'User logged in successfully.',
+            'user' => new UserResource($user),
+            'token' => $token->plainTextToken
+        ], 200);
     }
 }
