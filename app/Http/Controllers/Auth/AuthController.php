@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\VerifyEmailRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -23,7 +24,6 @@ class AuthController extends Controller
             'user' => new UserResource($user)
         ], 201);
     }
-
     public function login(LoginRequest $request)
     {
         $data = $request->validated();
@@ -38,6 +38,14 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
         $token = $user->createToken('auth-token');
+
+        if (! $user->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Email not verified.',
+                'user' => new UserResource($user),
+                'token' => $token->plainTextToken
+            ], 403);
+        }
 
         return response()->json([
             'message' => 'User logged in successfully.',
@@ -59,6 +67,34 @@ class AuthController extends Controller
     {
         return response()->json([
             'user' => new UserResource($request->user()),
+        ], 200);
+    }
+    public function verifyEmail(VerifyEmailRequest $request)
+    {
+        if (! $request->fulfill()) {
+            return response()->json([
+                'message' => 'Email already verified.'
+            ], 409);
+        }
+
+        return response()->json([
+            'message' => 'Email verified successfully.'
+        ], 200);
+    }
+    public function sendVerificationEmail(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Email already verified.'
+            ], 409);
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        return response()->json([
+            'message' => 'Verification link sent successfully.'
         ], 200);
     }
 }

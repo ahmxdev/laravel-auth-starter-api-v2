@@ -6,10 +6,10 @@ use function Pest\Laravel\assertDatabaseCount;
 use function Pest\Laravel\assertDatabaseHas;
 use function Pest\Laravel\postJson;
 
-test('guest can login', function () {
+test('guest can login with verified email', function () {
 
     $password = fake()->password(8);
-    $user = User::create([
+    $user = User::factory()->verified()->create([
         'name' => fake()->name(),
         'email' => fake()->email(),
         'password' => $password,
@@ -25,6 +25,49 @@ test('guest can login', function () {
 
 
     $response->assertOk();
+
+    assertDatabaseHas('personal_access_tokens', [
+        'tokenable_type' => User::class,
+        'tokenable_id' => $user->id,
+    ]);
+
+    $response->assertJsonStructure([
+        'message',
+        'user' => [
+            'name',
+            'email',
+            'created_at',
+            'updated_at',
+        ],
+        'token'
+    ]);
+    $response->assertJson([
+        'user' => [
+            'email' => $data['email'],
+        ]
+    ]);
+    expect($response->json('token'))->toBeString()->not->toBeEmpty();
+});
+
+test('guest can login with unverified email', function () {
+
+    $password = fake()->password(8);
+    $user = User::factory()->create([
+        'name' => fake()->name(),
+        'email' => fake()->email(),
+        'password' => $password,
+    ]);
+
+    $data = [
+        'email' => $user->email,
+        'password' => $password
+    ];
+
+
+    $response = postJson('/api/login', $data);
+
+
+    $response->assertForbidden();
 
     assertDatabaseHas('personal_access_tokens', [
         'tokenable_type' => User::class,
