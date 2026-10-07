@@ -143,3 +143,37 @@ test('not-existing email', function () {
 
     assertDatabaseCount('personal_access_tokens', 0);
 });
+
+test('login cannot be requested more than 5 times for the same email', function () {
+    $email = fake()->email();
+
+    for ($i = 1; $i <= 5; $i++) {
+        postJson('/api/login', [
+            'email' => $email,
+            'password' => 'password',
+        ]);
+    }
+
+    $response = postJson('/api/login', [
+        'email' => $email,
+        'password' => 'password',
+    ]);
+
+    $response->assertTooManyRequests();
+});
+
+test('login cannot be requested more than 30 times from the same IP', function () {
+    for ($i = 1; $i <= 30; $i++) {
+        postJson('/api/login', [
+            'email' => fake()->email(),
+            'password' => 'password',
+        ]);
+    }
+
+    $response = postJson('/api/login', [
+        'email' => fake()->email(),
+        'password' => 'password',
+    ]);
+
+    $response->assertTooManyRequests();
+});

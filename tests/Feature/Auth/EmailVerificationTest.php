@@ -82,6 +82,15 @@ test('expired verification url is rejected', function () {
     $user->refresh();
     expect($user->email_verified_at)->toBeNull();
 });
+test('email verification cannot be requested more than 10 times from the same IP', function () {
+    for ($i = 1; $i <= 10; $i++) {
+        postJson('/api/email/verify/1/hash');
+    }
+
+    $response = postJson('/api/email/verify/1/hash');
+
+    $response->assertTooManyRequests();
+});
 
 // Tests for 'email/verification-notification'
 test('authenticated unverified user can request verification email', function () {
@@ -124,4 +133,32 @@ test('guest cannot request verification email', function () {
     $response = postJson('/api/email/verification-notification');
 
     $response->assertUnauthorized();
+});
+
+test('authenticated user cannot request more than 2 verification emails', function () {
+    $user = User::factory()->create();
+
+    Sanctum::actingAs($user);
+
+    for ($i = 1; $i <= 2; $i++) {
+        postJson('/api/email/verification-notification');
+    }
+
+    $response = postJson('/api/email/verification-notification');
+
+    $response->assertTooManyRequests();
+});
+
+test('verification notification cannot be requested more than 10 times from the same IP', function () {
+    $user = User::factory()->create();
+
+    Sanctum::actingAs($user);
+
+    for ($i = 1; $i <= 10; $i++) {
+        postJson('/api/email/verification-notification');
+    }
+
+    $response = postJson('/api/email/verification-notification');
+
+    $response->assertTooManyRequests();
 });

@@ -87,3 +87,21 @@ test('test validations', function ($data) {
         'password_confirmation' => 'different_password'
     ]],
 ]);
+
+test('register cannot be requested more than 5 times from the same IP', function () {
+    for ($i = 1; $i <= 5; $i++) {
+        postJson('/api/register', [
+            'name' => fake()->name(),
+            'email' => fake()->unique()->safeEmail(),
+            'password' => 'password',
+        ]);
+    }
+
+    $response = postJson('/api/register', [
+        'name' => fake()->name(),
+        'email' => fake()->unique()->safeEmail(),
+        'password' => 'password',
+    ]);
+
+    $response->assertTooManyRequests();
+});
